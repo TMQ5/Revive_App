@@ -5,14 +5,21 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from keras.applications.mobilenet import MobileNet, preprocess_input
 from keras.preprocessing import image
-import pytesseract
+import easyocr
 
-# تحميل النموذج
+# تحميل نموذج التصنيف البصري
 @st.cache_resource
 def load_model():
     return MobileNet(weights='imagenet', include_top=False, pooling='avg')
 model = load_model()
 
+# تحميل نموذج قراءة النصوص
+@st.cache_resource
+def load_reader():
+    return easyocr.Reader(['ar', 'en'])
+reader = load_reader()
+
+# استخراج الخصائص من الصورة
 def extract_features(img):
     img = img.resize((224, 224)).convert('RGB')
     x = image.img_to_array(img)
@@ -21,6 +28,7 @@ def extract_features(img):
     features = model.predict(x)
     return features[0]
 
+# تصنيف النصوص حسب المحتوى
 def classify_text(text):
     text_lower = text.lower()
     if any(k in text_lower for k in ['بشرة', 'زيت', 'عناية', 'ترطيب']):
@@ -38,6 +46,7 @@ def classify_text(text):
 
 st.set_page_config(layout="wide")
 st.title("مقبرة لقطات الشاشة الذكية *･ﾟ✧")
+
 uploaded_files = st.file_uploader("ارفع لقطات الشاشة", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
 if uploaded_files:
@@ -47,7 +56,11 @@ if uploaded_files:
     for file in uploaded_files:
         img = Image.open(file)
         feat = extract_features(img)
-        text = pytesseract.image_to_string(img, lang='ara+eng')
+
+        # استخدام easyocr لاستخراج النصوص
+        result = reader.readtext(np.array(img))
+        text = "\n".join([item[1] for item in result])
+
         category = classify_text(text)
         features.append(feat)
         data.append({
@@ -57,12 +70,11 @@ if uploaded_files:
             "category": category
         })
 
-    # تجميع الصور حسب التشابه البصري
+    # تجميع بصري باستخدام KMeans
     k = st.slider("كم مجموعة تقريبًا تبين؟", min_value=2, max_value=10, value=3)
     kmeans = KMeans(n_clusters=k, random_state=42)
     labels = kmeans.fit_predict(features)
 
-    # إضافة الملصقات للمجموعات
     for i, label in enumerate(labels):
         data[i]["group"] = label
 
