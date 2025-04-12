@@ -3,32 +3,21 @@ from PIL import Image
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
-from keras.applications.mobilenet import MobileNet, preprocess_input
-from keras.preprocessing import image
 import easyocr
 
-# تحميل نموذج التصنيف البصري
-@st.cache_resource
-def load_model():
-    return MobileNet(weights='imagenet', include_top=False, pooling='avg')
-model = load_model()
-
-# تحميل نموذج قراءة النصوص
+# تحميل قارئ النصوص
 @st.cache_resource
 def load_reader():
     return easyocr.Reader(['ar', 'en'])
 reader = load_reader()
 
-# استخراج الخصائص من الصورة
-def extract_features(img):
-    img = img.resize((224, 224)).convert('RGB')
-    x = image.img_to_array(img)
-    x = np.expand_dims(x, axis=0)
-    x = preprocess_input(x)
-    features = model.predict(x)
-    return features[0]
+# دالة استخراج خصائص بسيطة من الصورة (لون متوسط)
+def extract_simple_features(img):
+    img = img.resize((100, 100)).convert("RGB")
+    arr = np.array(img).reshape(-1, 3)
+    return np.mean(arr, axis=0)
 
-# تصنيف النصوص حسب المحتوى
+# دالة تصنيف النصوص
 def classify_text(text):
     text_lower = text.lower()
     if any(k in text_lower for k in ['بشرة', 'زيت', 'عناية', 'ترطيب']):
@@ -55,7 +44,7 @@ if uploaded_files:
 
     for file in uploaded_files:
         img = Image.open(file)
-        feat = extract_features(img)
+        feat = extract_simple_features(img)
 
         # استخدام easyocr لاستخراج النصوص
         result = reader.readtext(np.array(img))
