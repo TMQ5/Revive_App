@@ -5,6 +5,8 @@ import pandas as pd
 from sklearn.cluster import KMeans
 import easyocr
 
+st.set_page_config(layout="wide")
+
 # تحميل قارئ النصوص
 @st.cache_resource
 def load_reader():
