@@ -3,6 +3,4 @@ pillow
 numpy
 pandas
 scikit-learn
-keras
-tensorflow
 easyocr
